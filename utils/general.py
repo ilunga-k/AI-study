@@ -255,6 +255,29 @@ def clip_coords(boxes, img_shape):
     boxes[:, 3].clamp_(0, img_shape[0])  # y2
 
 
+def clip_coords_landmarks(points, img_shape):
+    """Clip landmark points to image shape."""
+    points[:, 0::2].clamp_(0, img_shape[1])
+    points[:, 1::2].clamp_(0, img_shape[0])
+
+
+def scale_coords_landmarks(img1_shape, coords, img0_shape, ratio_pad=None):
+    """Rescale landmark coordinates from img1_shape to img0_shape."""
+    if ratio_pad is None:
+        gain = min(img1_shape[0] / img0_shape[0], img1_shape[1] / img0_shape[1])
+        pad = (img1_shape[1] - img0_shape[1] * gain) / 2, (img1_shape[0] - img0_shape[0] * gain) / 2
+    else:
+        gain = ratio_pad[0][0]
+        pad = ratio_pad[1]
+
+    coords[:, 0::2] -= pad[0]
+    coords[:, 1::2] -= pad[1]
+    coords[:, 0::2] /= gain
+    coords[:, 1::2] /= gain
+    clip_coords_landmarks(coords, img0_shape)
+    return coords
+
+
 def bbox_iou(box1, box2, x1y1x2y2=True, GIoU=False, DIoU=False, CIoU=False, eps=1e-9):
     # Returns the IoU of box1 to box2. box1 is 4, box2 is nx4
     box2 = box2.T
