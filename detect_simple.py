@@ -3,7 +3,11 @@ import cv2
 import numpy as np
 from pathlib import Path
 from models.experimental import attempt_load
-from utils.general import non_max_suppression_face, scale_coords
+from utils.general import (
+    non_max_suppression_face,
+    scale_coords,
+    scale_coords_landmarks,
+)
 from utils.datasets import letterbox
 
 # 설정
@@ -39,7 +43,9 @@ while cap.isOpened():
         if len(det):
             # 좌표 스케일 복원
             det[:, :4] = scale_coords(img.shape[2:], det[:, :4], img0.shape).round()
-            det[:, 5:15] = scale_coords(img.shape[2:], det[:, 5:15], img0.shape).round()
+            det[:, 5:15] = scale_coords_landmarks(
+                img.shape[2:], det[:, 5:15], img0.shape
+            ).round()
 
             for d in det:
                 xyxy = d[0:4]
