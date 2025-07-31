@@ -1,7 +1,6 @@
 import torch
 import cv2
 import numpy as np
-from pathlib import Path
 from models.experimental import attempt_load
 from utils.general import non_max_suppression_face, scale_coords
 from utils.datasets import letterbox
