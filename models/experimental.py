@@ -111,16 +111,22 @@ class Ensemble(nn.ModuleList):
         return y, None
 
 
-def attempt_load(weights, map_location=None):
+def attempt_load(weights, map_location=None, inplace=True, fuse=True):
+    from models.yolo import Detect, Model
+
     model = Ensemble()
     for w in weights if isinstance(weights, list) else [weights]:
         attempt_download(w)
-        model_data = torch.load(w, map_location=map_location)
-        model.append(model_data['model'].float().fuse().eval())
+        ckpt = torch.load(w, map_location=map_location)
+        mdl = ckpt['ema' if ckpt.get('ema') else 'model'].float()
+        model.append(mdl.fuse().eval() if fuse else mdl.eval())
 
     for m in model.modules():
-        if isinstance(m, (nn.Hardswish, nn.LeakyReLU, nn.ReLU, nn.ReLU6, nn.SiLU)):
-            m.inplace = True
+        if isinstance(m, (nn.Hardswish, nn.LeakyReLU, nn.ReLU, nn.ReLU6, nn.SiLU, Detect, Model)):
+            m.inplace = inplace
+            if isinstance(m, Detect) and not isinstance(m.anchor_grid, list):
+                delattr(m, 'anchor_grid')
+                setattr(m, 'anchor_grid', [torch.zeros(1)] * m.nl)
         elif isinstance(m, Conv):
             m._non_persistent_buffers_set = set()
 
@@ -128,6 +134,7 @@ def attempt_load(weights, map_location=None):
         return model[-1]
     else:
         print(f'Ensemble created with {weights}\n')
-        for k in ['names', 'stride']:
+        for k in ['names']:
             setattr(model, k, getattr(model[-1], k))
+        model.stride = model[torch.argmax(torch.tensor([m.stride.max() for m in model])).int()].stride
         return model
